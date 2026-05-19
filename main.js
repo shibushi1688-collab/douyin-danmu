@@ -12,14 +12,16 @@ function createWindow() {
 
   mainWindow = new BrowserWindow({
     width: Math.round(width * 0.4),
-    height: Math.round(height * 0.6),
-    transparent: true,           // 窗口透明
-    frame: false,                 // 无边框
-    resizable: false,             // 固定大小
-    alwaysOnTop: true,            // 始终在最前
-    skipTaskbar: true,            // 不显示在任务栏
-    hasShadow: false,             // 无阴影
-    backgroundColor: '#00000000', // 完全透明背景
+    height: Math.round(height * 0.65),
+    minWidth: 300,
+    minHeight: 200,
+    transparent: true,
+    frame: false,
+    resizable: true,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    hasShadow: false,
+    backgroundColor: '#00000000',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -51,19 +53,25 @@ async function connectDanmu(liveId) {
 
   douyinCore.on('connected', () => {
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('status', { connected: true, error: null });
+      mainWindow.webContents.send('status', { connected: true, error: null, step: null });
     }
   });
 
   douyinCore.on('disconnected', () => {
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('status', { connected: false, error: '连接断开' });
+      mainWindow.webContents.send('status', { connected: false, error: '连接断开', step: null });
     }
   });
 
   douyinCore.on('error', (err) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('status', { connected: false, error: err.message });
+      mainWindow.webContents.send('status', { connected: false, error: err.message, step: null });
+    }
+  });
+
+  douyinCore.on('status', (data) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('status', { connected: false, error: null, step: data.step });
     }
   });
 
@@ -87,7 +95,6 @@ function setupIpc() {
     return { success: true };
   });
 
-  // 设置窗口透明度 (0.1 ~ 1.0)
   ipcMain.handle('set-opacity', (event, opacity) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.setOpacity(Math.max(0.1, Math.min(1.0, opacity)));
@@ -95,7 +102,6 @@ function setupIpc() {
     return { success: true };
   });
 
-  // 获取当前透明度
   ipcMain.handle('get-opacity', () => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       return { opacity: mainWindow.getOpacity() };
@@ -103,14 +109,20 @@ function setupIpc() {
     return { opacity: 1.0 };
   });
 
-  // 关闭窗口
+  // 窗口缩放（页面内容缩放比例 0.5 ~ 1.0）
+  ipcMain.handle('set-zoom', (event, factor) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.setZoomFactor(Math.max(0.5, Math.min(1.0, factor)));
+    }
+    return { success: true };
+  });
+
   ipcMain.handle('close-window', () => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.close();
     }
   });
 
-  // 移动窗口（拖拽区域）
   ipcMain.handle('move-window', (event, deltaX, deltaY) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       const pos = mainWindow.getPosition();

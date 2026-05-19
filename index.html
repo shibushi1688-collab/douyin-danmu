@@ -13,17 +13,17 @@ html, body {
   user-select: none;
 }
 
-/* 顶栏 - 可拖拽区域 */
 .titlebar {
   display: flex;
   align-items: center;
   padding: 4px 8px;
-  background: rgba(0,0,0,0.4);
+  background: rgba(0,0,0,0.45);
   border-radius: 8px 8px 0 0;
   cursor: move;
   -webkit-app-region: drag;
 }
 .titlebar .title { font-size: 12px; color: rgba(255,255,255,0.7); flex: 1; }
+.titlebar .conn-step { font-size: 11px; color: rgba(255,200,100,0.8); margin-left: 8px; flex: 1; }
 .titlebar .win-btn {
   -webkit-app-region: no-drag;
   background: none;
@@ -37,9 +37,8 @@ html, body {
 .titlebar .win-btn:hover { color: #fff; }
 .titlebar .win-btn.close:hover { background: #e81123; border-radius: 4px; }
 
-/* 控制区 */
 .controls {
-  background: rgba(0,0,0,0.4);
+  background: rgba(0,0,0,0.35);
   padding: 6px 8px;
   display: flex;
   gap: 6px;
@@ -72,13 +71,12 @@ html, body {
 .btn:hover { background: rgba(255,71,87,1); }
 .btn:disabled { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.3); cursor: not-allowed; }
 
-/* 滑块行 */
 .slider-row {
-  background: rgba(0,0,0,0.4);
-  padding: 4px 8px 6px;
+  background: rgba(0,0,0,0.35);
+  padding: 4px 8px 5px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 .slider-label { font-size: 11px; color: rgba(255,255,255,0.4); white-space: nowrap; }
 .slider {
@@ -99,9 +97,14 @@ html, body {
   background: #ff4757;
   cursor: pointer;
 }
-.slider-val { font-size: 11px; color: rgba(255,255,255,0.5); width: 28px; text-align: right; }
+.slider-val { font-size: 11px; color: rgba(255,255,255,0.5); width: 30px; text-align: right; }
+.slider-row .btn {
+  padding: 3px 8px;
+  font-size: 11px;
+  background: rgba(255,255,255,0.1);
+}
+.slider-row .btn:hover { background: rgba(255,255,255,0.2); }
 
-/* 弹幕列表 */
 .danmu-list {
   flex: 1;
   overflow-y: auto;
@@ -119,6 +122,7 @@ html, body {
   background: rgba(0,0,0,0.5);
   border-left: 2px solid #ff4757;
   word-break: break-all;
+  line-height: 1.4;
 }
 .danmu-item.member { border-left-color: #70a1ff; }
 .danmu-item.gift { border-left-color: #ffa502; }
@@ -138,6 +142,7 @@ html, body {
 
 <div class="titlebar">
   <span class="title">抖音弹幕</span>
+  <span class="conn-step" id="connStep"></span>
   <div style="display:flex;gap:2px;-webkit-app-region:no-drag">
     <span class="status-dot" id="statusDot" style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.3);align-self:center;margin-right:4px"></span>
     <button class="win-btn close" onclick="window.electronAPI.closeWindow()">✕</button>
@@ -156,9 +161,13 @@ html, body {
   <span class="slider-val" id="opacityVal">80%</span>
   <span class="slider-label" style="margin-left:4px">字</span>
   <input type="range" class="slider" id="fontSlider" min="11" max="24" value="13"
-    style="flex:0.6" oninput="setFontSize(this.value)" />
+    style="flex:0.7" oninput="setFontSize(this.value)" />
   <span class="slider-val" id="fontVal">13</span>
-  <button class="btn" style="background:rgba(255,255,255,0.1);padding:5px 8px;font-size:11px" onclick="clearDanmu()">清空</button>
+  <span class="slider-label" style="margin-left:4px">大小</span>
+  <input type="range" class="slider" id="zoomSlider" min="50" max="100" value="100"
+    style="flex:0.7" oninput="setZoom(this.value)" />
+  <span class="slider-val" id="zoomVal">100%</span>
+  <button class="btn" style="margin-left:2px" onclick="clearDanmu()">清空</button>
 </div>
 
 <div class="danmu-list" id="danmuList">

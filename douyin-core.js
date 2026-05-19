@@ -5,10 +5,11 @@ const WebSocket = require('ws');
 const { inflateSync } = require('zlib');
 
 // ============================================================
-// 签名 API（复用 BarrageGrab 的第三方签名服务）
+// 签名 API（BarrageGrab 同款）
 // ============================================================
 const SIGN_API_DOMAIN = 'https://api.aiobs.cn';
 const SIGN_API_KEY = 'test-apikey-de9991ea-bf2b-454c-7982-adddfe0581ac-96c0642e-7d1d-87a7-08b2-eff81edae4d3';
+const LIVE_URL = 'https://live.douyin.com';
 
 // ============================================================
 // 手动 Protobuf 解析
@@ -38,12 +39,10 @@ function decodeMessage(buffer) {
     const key = decodeKey(buffer, offset);
     offset = key.offset;
     if (key.wireType === 0) {
-      // varint
       const { value, offset: next } = decodeVarint(buffer, offset);
       offset = next;
       result[key.fieldNum] = value;
     } else if (key.wireType === 2) {
-      // len-delimited
       const { value, offset: next } = decodeVarint(buffer, offset);
       offset = next;
       result[key.fieldNum] = buffer.slice(offset, offset + value);
@@ -74,16 +73,6 @@ function parseUser(data) {
   };
 }
 
-function parseCommon(data) {
-  if (!data || data.length === 0) return null;
-  const obj = decodeMessage(data);
-  return {
-    msgId: obj[1] ? obj[1].toString() : '',
-    roomId: obj[2] || 0,
-    curTime: obj[3] || 0,
-  };
-}
-
 // ============================================================
 // 核心类
 // ============================================================
@@ -92,6 +81,7 @@ class DouyinCore {
   constructor() {
     this.ws = null;
     this.roomId = null;
+    this.userUniqueId = null;
     this.wssUrl = null;
     this.ttwid = null;
     this.headers = {
@@ -101,10 +91,9 @@ class DouyinCore {
     this._reconnectTimer = null;
     this._reconnectAttempts = 0;
     this._listeners = {};
-    this._maxReconnects = 5;
+    this._maxReconnects = 3;
   }
 
-  // 事件
   on(event, callback) {
     if (!this._listeners[event]) this._listeners[event] = [];
     this._listeners[event].push(callback);
@@ -121,24 +110,84 @@ class DouyinCore {
     }
   }
 
-  // 生成随机字符串
-  _generateRandomString(len = 128) {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  _generateMsToken(len = 107) {
+    const base = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789=_';
     let result = '';
     for (let i = 0; i < len; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
+      result += base[Math.floor(Math.random() * base.length)];
     }
     return result;
   }
 
+  _generateNonce(len = 21) {
+    const base = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < len; i++) {
+      result += base[Math.floor(Math.random() * base.length)];
+    }
+    return result;
+  }
+
+  // 获取 ttwid
+  async _getTtwid() {
+    const nonce = this._generateNonce();
+    try {
+      const resp = await axios.get(`${LIVE_URL}/${this.roomId}`, {
+        headers: {
+          'User-Agent': this.headers['User-Agent'],
+          'Cookie': `__ac_nonce=0${nonce}`,
+        },
+        timeout: 10000,
+      });
+      const cookies = resp.headers['set-cookie'] || [];
+      for (const c of cookies) {
+        const match = c.match(/ttwid=([^;]+)/);
+        if (match) return match[1];
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  // 获取 roomId 和 userUniqueId
+  async _getRoomInfo() {
+    if (!this.ttwid) throw new Error('缺少 ttwid');
+    const nonce = this._generateNonce();
+    const msToken = this._generateMsToken();
+    try {
+      const resp = await axios.get(`${LIVE_URL}/${this.roomId}`, {
+        headers: {
+          'User-Agent': this.headers['User-Agent'],
+          'Cookie': `ttwid=${this.ttwid}; msToken=${msToken}; __ac_nonce=0${nonce}`,
+        },
+        timeout: 10000,
+      });
+
+      const html = resp.data;
+
+      // 提取 user_unique_id
+      const uidMatch = html.match(/user_unique_id\\?":\\?"(\d+)/);
+      const userUniqueId = uidMatch ? uidMatch[1] : null;
+
+      // 提取 roomId（短room id）
+      const roomIdMatch = html.match(/roomId\\?":\\?"(\d+)/);
+      const roomId = roomIdMatch ? roomIdMatch[1] : null;
+
+      return { userUniqueId, roomId };
+    } catch (e) {
+      throw new Error('获取房间信息失败: ' + e.message);
+    }
+  }
+
   // 调用签名 API
-  async _getSignedWss(roomId, userUniqueId = '') {
+  async _getSignedWss(roomId, userUniqueId) {
     const resp = await axios.post(`${SIGN_API_DOMAIN}/Douyin/Douyin/SignWss`, {
       ApiKey: SIGN_API_KEY,
       BrowserName: 'Mozilla',
       BrowserVersion: this.headers['User-Agent'],
       RoomId: roomId,
-      UserUniqueId: userUniqueId || 'browser-0',
+      UserUniqueId: userUniqueId || '',
     }, {
       headers: {
         'Content-Type': 'application/json;charset=UTF-8',
@@ -161,8 +210,27 @@ class DouyinCore {
       this.roomId = String(liveId).replace(/\/$/, '').split('/').pop();
       console.log(`[DouyinCore] 房间号: ${this.roomId}`);
 
-      // 获取签名 WSS
-      this.wssUrl = await this._getSignedWss(this.roomId, '');
+      // 1. 获取 ttwid
+      this._emit('status', { step: '获取ttwid...' });
+      this.ttwid = await this._getTtwid();
+      if (!this.ttwid) {
+        throw new Error('获取 ttwid 失败，请刷新重试');
+      }
+      console.log(`[DouyinCore] ttwid: ${this.ttwid.substring(0, 8)}...`);
+
+      // 2. 获取 roomId 和 userUniqueId
+      this._emit('status', { step: '获取房间信息...' });
+      const { userUniqueId, roomId } = await this._getRoomInfo();
+      if (!userUniqueId) {
+        throw new Error('获取 userUniqueId 失败');
+      }
+      this.userUniqueId = userUniqueId;
+      const actualRoomId = roomId || this.roomId;
+      console.log(`[DouyinCore] userUniqueId: ${userUniqueId}, roomId: ${actualRoomId}`);
+
+      // 3. 获取签名 WSS
+      this._emit('status', { step: '获取连接...' });
+      this.wssUrl = await this._getSignedWss(actualRoomId, userUniqueId);
       console.log(`[DouyinCore] WSS: ${this.wssUrl.substring(0, 80)}...`);
 
       await this._connect();
@@ -178,6 +246,7 @@ class DouyinCore {
       this.ws = new WebSocket(this.wssUrl, {
         headers: {
           'User-Agent': this.headers['User-Agent'],
+          'Cookie': `ttwid=${this.ttwid}`,
         },
       });
 
@@ -210,33 +279,22 @@ class DouyinCore {
 
   _handleMessage(buffer) {
     try {
-      // 尝试 gzip 解压
       let msgData = buffer;
       try {
         msgData = inflateSync(buffer);
-      } catch {
-        // 无压缩
-      }
+      } catch {}
 
-      // 解析 PushFrame
-      // PushFrame: logId(1), payloadType(2), payload(3), payloadVersion(4), compressType(5)
       const pushFrame = decodeMessage(msgData);
-      const payload = pushFrame[3]; // bytes
+      const payload = pushFrame[3];
       if (!payload || payload.length === 0) return;
 
-      // 解压内部 payload
       let innerData = payload;
       try {
         innerData = inflateSync(payload);
-      } catch {
-        // 无压缩
-      }
+      } catch {}
 
-      // 解析 Response
-      // Response: cursor(1), fetchInterval(2), now(3), now2(4), messagesList(1) ...
-      // Response 是 Repeated Message，所以外层是 length-delimited 包裹
-      let respOffset = 0;
       const respFields = {};
+      let respOffset = 0;
       while (respOffset < innerData.length) {
         const keyByte = innerData[respOffset++];
         const fieldNum = keyByte >> 3;
@@ -253,10 +311,9 @@ class DouyinCore {
         }
       }
 
-      const messagesList = respFields[1]; // repeated Message
+      const messagesList = respFields[1];
       if (!messagesList) return;
 
-      // messagesList 是 packed length-delimited Message[]
       let listOffset = 0;
       while (listOffset < messagesList.length) {
         const { value, offset: next } = decodeVarint(messagesList, listOffset);
@@ -265,45 +322,28 @@ class DouyinCore {
         listOffset += value;
         this._parseMessage(msgBytes);
       }
-    } catch (e) {
-      // 忽略解析错误
-    }
+    } catch {}
   }
 
   _parseMessage(msgBytes) {
     const fields = decodeMessage(msgBytes);
     const method = fields[1] ? parseUtf8(fields[1]) : '';
     const payload = fields[2];
-
     if (!method || !payload || payload.length === 0) return;
 
     try {
       switch (method) {
-        case 'WebcastChatMessage':
-          this._parseChatMessage(payload);
-          break;
-        case 'WebcastMemberMessage':
-          this._parseMemberMessage(payload);
-          break;
-        case 'WebcastGiftMessage':
-          this._parseGiftMessage(payload);
-          break;
-        case 'WebcastLikeMessage':
-          this._parseLikeMessage(payload);
-          break;
-        case 'WebcastSocialMessage':
-          this._parseSocialMessage(payload);
-          break;
-        default:
-          break;
+        case 'WebcastChatMessage':    this._parseChatMessage(payload);    break;
+        case 'WebcastMemberMessage':  this._parseMemberMessage(payload);  break;
+        case 'WebcastGiftMessage':    this._parseGiftMessage(payload);    break;
+        case 'WebcastLikeMessage':    this._parseLikeMessage(payload);    break;
+        case 'WebcastSocialMessage':  this._parseSocialMessage(payload);   break;
+        default: break;
       }
-    } catch (e) {
-      // 忽略单个消息解析错误
-    }
+    } catch {}
   }
 
   _parseChatMessage(payload) {
-    // ChatMessage: common(1), user(2), content(3), visibleToSender(4)
     const obj = decodeMessage(payload);
     const user = parseUser(obj[2]);
     const content = parseUtf8(obj[3]);
@@ -318,7 +358,6 @@ class DouyinCore {
   }
 
   _parseMemberMessage(payload) {
-    // MemberMessage: common(1), user(2), memberCount(3)
     const obj = decodeMessage(payload);
     const user = parseUser(obj[2]);
     this._emit('danmu', {
@@ -330,7 +369,6 @@ class DouyinCore {
   }
 
   _parseGiftMessage(payload) {
-    // GiftMessage: common(1), user(2), giftId(3), fanTicketCount(4), giftName(5), giftCount(6)
     const obj = decodeMessage(payload);
     const user = parseUser(obj[2]);
     const giftId = obj[3] || 0;
@@ -344,16 +382,10 @@ class DouyinCore {
   }
 
   _parseLikeMessage(payload) {
-    this._emit('danmu', {
-      type: 'like',
-      text: '❤️ 点赞',
-      user: '',
-      userId: '',
-    });
+    this._emit('danmu', { type: 'like', text: '❤️ 点赞', user: '', userId: '' });
   }
 
   _parseSocialMessage(payload) {
-    // SocialMessage: common(1), user(2), action(3), shareTarget(4)
     const obj = decodeMessage(payload);
     const user = parseUser(obj[2]);
     const action = obj[3] || 0;
@@ -366,7 +398,6 @@ class DouyinCore {
   }
 
   _startHeartbeat() {
-    // 心跳包: 3a 02 68 62
     const heartbeat = Buffer.from([0x3a, 0x02, 0x68, 0x62]);
     this._heartbeatTimer = setInterval(() => {
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
@@ -384,19 +415,18 @@ class DouyinCore {
 
   _scheduleReconnect() {
     if (this._reconnectAttempts >= this._maxReconnects) {
-      this._emit('error', { message: '重连次数超限，停止' });
+      this._emit('error', { message: '重试次数超限，请重新连接' });
       return;
     }
     if (this._reconnectTimer) return;
     this._reconnectAttempts++;
-    console.log(`[DouyinCore] ${this._reconnectAttempts}s 后重连...`);
     this._reconnectTimer = setTimeout(async () => {
       this._reconnectTimer = null;
       if (this.roomId && this.wssUrl) {
         try {
           await this._connect();
         } catch (e) {
-          console.error('[DouyinCore] 重连失败:', e.message);
+          this._emit('error', { message: '重连失败: ' + e.message });
         }
       }
     }, 3000);
@@ -414,6 +444,7 @@ class DouyinCore {
     }
     this.roomId = null;
     this.wssUrl = null;
+    this.userUniqueId = null;
   }
 }
 

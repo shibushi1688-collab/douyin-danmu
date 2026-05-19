@@ -6,13 +6,20 @@ function escHtml(str) {
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-function setStatus(connected, error) {
+function setStatus(connected, error, step) {
   const dot = document.getElementById('statusDot');
-  if (connected) {
+  const stepEl = document.getElementById('connStep');
+  if (step) {
+    stepEl.textContent = step;
+    dot.style.background = '#ffa502';
+  } else if (connected) {
+    stepEl.textContent = '';
     dot.style.background = '#2ed573';
   } else if (error) {
+    stepEl.textContent = error;
     dot.style.background = '#ff4757';
   } else {
+    stepEl.textContent = '';
     dot.style.background = 'rgba(255,255,255,0.3)';
   }
 }
@@ -60,13 +67,18 @@ async function setOpacity(val) {
   await window.electronAPI.setOpacity(val / 100);
 }
 
+async function setZoom(val) {
+  document.getElementById('zoomVal').textContent = val + '%';
+  await window.electronAPI.setZoom(val / 100);
+}
+
 async function connectRoom() {
   const url = document.getElementById('roomUrl').value.trim();
   if (!url) return;
   const btn = document.getElementById('btnConnect');
   btn.disabled = true;
-  btn.textContent = '...';
-  setStatus(false, null);
+  btn.textContent = '连接中...';
+  setStatus(false, null, '准备中...');
 
   const r = await window.electronAPI.connect(url);
   if (r.success) {
@@ -75,13 +87,17 @@ async function connectRoom() {
   } else {
     btn.disabled = false;
     btn.textContent = '失败重试';
-    setStatus(false, r.error || '连接失败');
+    setStatus(false, r.error || '连接失败', null);
   }
 }
 
-// IPC 监听
 window.electronAPI.onDanmu(addDanmu);
-window.electronAPI.onStatus(data => setStatus(data.connected, data.error));
+window.electronAPI.onStatus(data => {
+  if (data.step) {
+    setStatus(false, null, data.step);
+  } else {
+    setStatus(data.connected, data.error, null);
+  }
+});
 
-// 初始化透明度
 setOpacity(80);

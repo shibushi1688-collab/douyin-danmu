@@ -13,13 +13,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('status', (event, data) => callback(data));
   },
 
-  // 窗口透明度
   setOpacity: (val) => ipcRenderer.invoke('set-opacity', val),
   getOpacity: () => ipcRenderer.invoke('get-opacity'),
 
-  // 关闭窗口
+  setZoom: (factor) => ipcRenderer.invoke('set-zoom', factor),
+
   closeWindow: () => ipcRenderer.invoke('close-window'),
 
-  // 拖拽移动窗口
   moveWindow: (deltaX, deltaY) => ipcRenderer.invoke('move-window', deltaX, deltaY),
 });
