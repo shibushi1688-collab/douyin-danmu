@@ -2,85 +2,168 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>抖音弹幕</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Microsoft YaHei', sans-serif; background: #121212; color: #e0e0e0; height: 100vh; display: flex; flex-direction: column; font-size: 14px; }
-.header { background: #1f1f1f; padding: 14px 16px; border-bottom: 1px solid #333; display: flex; align-items: center; gap: 12px; }
-.header h1 { font-size: 16px; font-weight: 600; color: #ff4757; }
-.header-right { display: flex; align-items: center; gap: 8px; margin-left: auto; }
-.status-dot { width: 8px; height: 8px; border-radius: 50%; background: #555; }
-.status-dot.active { background: #2ed573; box-shadow: 0 0 6px #2ed573; }
-.status-dot.error { background: #ff4757; }
-.status-text { font-size: 12px; color: #888; }
-.main { flex: 1; overflow: hidden; display: flex; flex-direction: column; padding: 12px; gap: 10px; }
-.input-row { display: flex; gap: 8px; }
-.input { flex: 1; padding: 9px 12px; border-radius: 6px; border: 1px solid #333; background: #0d0d0d; color: #e0e0e0; font-size: 13px; outline: none; }
-.input:focus { border-color: #ff4757; }
-.input::placeholder { color: #555; }
-.btn { background: #ff4757; color: #fff; border: none; padding: 9px 18px; border-radius: 6px; font-size: 13px; cursor: pointer; transition: background 0.2s; white-space: nowrap; }
-.btn:hover { background: #ff6b81; }
-.btn:disabled { background: #333; color: #666; cursor: not-allowed; }
-.btn-secondary { background: #2f3542; }
-.btn-secondary:hover { background: #3d4452; }
-.danmu-panel { flex: 1; overflow: hidden; display: flex; flex-direction: column; background: #1a1a1a; border-radius: 8px; }
-.panel-header { display: flex; align-items: center; padding: 10px 12px; border-bottom: 1px solid #2a2a2a; gap: 8px; }
-.panel-header span { font-size: 12px; color: #666; }
-.badge { font-size: 11px; padding: 1px 6px; border-radius: 10px; background: #ff4757; color: #fff; }
-.ctrl-group { display: flex; align-items: center; gap: 4px; margin-left: auto; }
-.ctrl-group label { font-size: 11px; color: #555; }
-input[type=range] { cursor: pointer; accent-color: #ff4757; }
-.danmu-list { flex: 1; overflow-y: auto; padding: 6px 8px; }
-.danmu-item { padding: 6px 8px; margin-bottom: 3px; background: #1a1a1a; border-radius: 4px; font-size: 13px; animation: slideIn 0.15s ease; border-left: 3px solid #ff4757; }
+html, body {
+  background: transparent;
+  font-family: -apple-system, BlinkMacSystemFont, 'Microsoft YaHei', sans-serif;
+  height: 100vh;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* 顶栏 - 可拖拽区域 */
+.titlebar {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  background: rgba(0,0,0,0.4);
+  border-radius: 8px 8px 0 0;
+  cursor: move;
+  -webkit-app-region: drag;
+}
+.titlebar .title { font-size: 12px; color: rgba(255,255,255,0.7); flex: 1; }
+.titlebar .win-btn {
+  -webkit-app-region: no-drag;
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.6);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 6px;
+  line-height: 1;
+}
+.titlebar .win-btn:hover { color: #fff; }
+.titlebar .win-btn.close:hover { background: #e81123; border-radius: 4px; }
+
+/* 控制区 */
+.controls {
+  background: rgba(0,0,0,0.4);
+  padding: 6px 8px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.ctrl-input {
+  flex: 1;
+  padding: 5px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+  font-size: 12px;
+  outline: none;
+  -webkit-app-region: no-drag;
+}
+.ctrl-input::placeholder { color: rgba(255,255,255,0.3); }
+.ctrl-input:focus { border-color: rgba(255,71,87,0.6); }
+.btn {
+  background: rgba(255,71,87,0.8);
+  color: #fff;
+  border: none;
+  padding: 5px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-app-region: no-drag;
+}
+.btn:hover { background: rgba(255,71,87,1); }
+.btn:disabled { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.3); cursor: not-allowed; }
+
+/* 滑块行 */
+.slider-row {
+  background: rgba(0,0,0,0.4);
+  padding: 4px 8px 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.slider-label { font-size: 11px; color: rgba(255,255,255,0.4); white-space: nowrap; }
+.slider {
+  flex: 1;
+  -webkit-appearance: none;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.15);
+  outline: none;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ff4757;
+  cursor: pointer;
+}
+.slider-val { font-size: 11px; color: rgba(255,255,255,0.5); width: 28px; text-align: right; }
+
+/* 弹幕列表 */
+.danmu-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 6px;
+  background: transparent;
+}
+.danmu-list::-webkit-scrollbar { display: none; }
+
+.danmu-item {
+  padding: 4px 6px;
+  margin-bottom: 2px;
+  border-radius: 4px;
+  font-size: 13px;
+  animation: slideIn 0.15s ease;
+  background: rgba(0,0,0,0.5);
+  border-left: 2px solid #ff4757;
+  word-break: break-all;
+}
 .danmu-item.member { border-left-color: #70a1ff; }
 .danmu-item.gift { border-left-color: #ffa502; }
 .danmu-item.like { border-left-color: #ff6b81; }
 .danmu-item.social { border-left-color: #2ed573; }
 .danmu-item.share { border-left-color: #7bed9f; }
-.danmu-user { color: #ff4757; font-weight: 600; margin-right: 6px; }
-.danmu-text { color: #d0d0d0; word-break: break-all; }
-.danmu-time { color: #555; font-size: 11px; margin-left: 6px; float: right; }
-.empty { text-align: center; color: #444; padding: 40px 0; font-size: 13px; }
-.footer { padding: 8px 16px; background: #1a1a1a; border-top: 1px solid #2a2a2a; font-size: 11px; color: #444; text-align: center; }
-@keyframes slideIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
+.danmu-user { color: #ff4757; font-weight: 600; margin-right: 4px; }
+.danmu-text { color: rgba(255,255,255,0.9); }
+.danmu-time { color: rgba(255,255,255,0.3); font-size: 10px; margin-left: 4px; }
+.empty { text-align: center; color: rgba(255,255,255,0.2); padding: 20px 0; font-size: 12px; }
+
+@keyframes slideIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 </head>
 <body>
 
-<div class="header">
-  <h1>🎙️ 抖音弹幕</h1>
-  <div class="header-right">
-    <div class="status-dot" id="statusDot"></div>
-    <span class="status-text" id="statusLabel">未连接</span>
+<div class="titlebar">
+  <span class="title">抖音弹幕</span>
+  <div style="display:flex;gap:2px;-webkit-app-region:no-drag">
+    <span class="status-dot" id="statusDot" style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.3);align-self:center;margin-right:4px"></span>
+    <button class="win-btn close" onclick="window.electronAPI.closeWindow()">✕</button>
   </div>
 </div>
 
-<div class="main">
-  <div class="input-row">
-    <input type="text" class="input" id="roomUrl" placeholder="粘贴直播间链接或房间号" />
-    <button class="btn" id="btnConnect">📡 连接</button>
-  </div>
-
-  <div class="danmu-panel">
-    <div class="panel-header">
-      <span>弹幕</span>
-      <span class="badge" id="danmuCount">0</span>
-      <div class="ctrl-group">
-        <label>字</label>
-        <input type="range" id="fontSizeSlider" min="11" max="22" value="13" oninput="setDanmuFontSize(this.value)" />
-        <label>透明</label>
-        <input type="range" id="opacitySlider" min="30" max="100" value="100" oninput="setDanmuOpacity(this.value)" />
-        <span onclick="clearDanmu()" style="cursor:pointer;color:#555;font-size:11px;margin-left:4px">清空</span>
-      </div>
-    </div>
-    <div class="danmu-list" id="danmuList">
-      <div class="empty">等待弹幕...</div>
-    </div>
-  </div>
+<div class="controls">
+  <input type="text" class="ctrl-input" id="roomUrl" placeholder="粘贴直播间链接或房间号" />
+  <button class="btn" id="btnConnect" onclick="connectRoom()">连接</button>
 </div>
 
-<div class="footer">关闭窗口最小化到托盘 · 弹幕数据仅本地使用</div>
+<div class="slider-row">
+  <span class="slider-label">透明</span>
+  <input type="range" class="slider" id="opacitySlider" min="10" max="100" value="80"
+    oninput="setOpacity(this.value)" />
+  <span class="slider-val" id="opacityVal">80%</span>
+  <span class="slider-label" style="margin-left:4px">字</span>
+  <input type="range" class="slider" id="fontSlider" min="11" max="24" value="13"
+    style="flex:0.6" oninput="setFontSize(this.value)" />
+  <span class="slider-val" id="fontVal">13</span>
+  <button class="btn" style="background:rgba(255,255,255,0.1);padding:5px 8px;font-size:11px" onclick="clearDanmu()">清空</button>
+</div>
+
+<div class="danmu-list" id="danmuList">
+  <div class="empty">等待弹幕...</div>
+</div>
 
 <script src="renderer.js"></script>
 </body>

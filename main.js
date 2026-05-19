@@ -1,18 +1,25 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, screen } = require('electron');
 const path = require('path');
 
 let mainWindow = null;
 let douyinCore = null;
 
 function createWindow() {
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width, height } = primaryDisplay.workAreaSize;
+
   mainWindow = new BrowserWindow({
-    width: 420,
-    height: 680,
-    minWidth: 320,
-    minHeight: 400,
-    title: '抖音弹幕',
+    width: Math.round(width * 0.4),
+    height: Math.round(height * 0.6),
+    transparent: true,           // 窗口透明
+    frame: false,                 // 无边框
+    resizable: false,             // 固定大小
+    alwaysOnTop: true,            // 始终在最前
+    skipTaskbar: true,            // 不显示在任务栏
+    hasShadow: false,             // 无阴影
+    backgroundColor: '#00000000', // 完全透明背景
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -68,9 +75,6 @@ function disconnectDanmu() {
     douyinCore.stop();
     douyinCore = null;
   }
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send('status', { connected: false, error: '已断开' });
-  }
 }
 
 function setupIpc() {
@@ -81,6 +85,37 @@ function setupIpc() {
   ipcMain.handle('disconnect', () => {
     disconnectDanmu();
     return { success: true };
+  });
+
+  // 设置窗口透明度 (0.1 ~ 1.0)
+  ipcMain.handle('set-opacity', (event, opacity) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.setOpacity(Math.max(0.1, Math.min(1.0, opacity)));
+    }
+    return { success: true };
+  });
+
+  // 获取当前透明度
+  ipcMain.handle('get-opacity', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      return { opacity: mainWindow.getOpacity() };
+    }
+    return { opacity: 1.0 };
+  });
+
+  // 关闭窗口
+  ipcMain.handle('close-window', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.close();
+    }
+  });
+
+  // 移动窗口（拖拽区域）
+  ipcMain.handle('move-window', (event, deltaX, deltaY) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      const pos = mainWindow.getPosition();
+      mainWindow.setPosition(pos[0] + deltaX, pos[1] + deltaY);
+    }
   });
 }
 

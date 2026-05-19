@@ -2,18 +2,18 @@
 
 let danmuCount = 0;
 
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
 function setStatus(connected, error) {
   const dot = document.getElementById('statusDot');
-  const label = document.getElementById('statusLabel');
   if (connected) {
-    dot.className = 'status-dot active';
-    label.textContent = '🟢 已连接';
+    dot.style.background = '#2ed573';
   } else if (error) {
-    dot.className = 'status-dot error';
-    label.textContent = '🔴 ' + error;
+    dot.style.background = '#ff4757';
   } else {
-    dot.className = 'status-dot';
-    label.textContent = '⚪ 未连接';
+    dot.style.background = 'rgba(255,255,255,0.3)';
   }
 }
 
@@ -26,95 +26,62 @@ function addDanmu(danmu) {
   const typeClass = danmu.type || 'chat';
   item.className = 'danmu-item ' + typeClass;
 
-  const typeIcons = { gift: '🎁', social: '✅', like: '❤️', member: '🚪', share: '🔗', chat: '💬' };
-  const icon = typeIcons[typeClass] || '💬';
+  const icons = { gift:'🎁', social:'✅', like:'❤️', member:'🚪', share:'🔗', chat:'💬' };
+  const icon = icons[typeClass] || '💬';
 
-  item.innerHTML = `
-    <span class="danmu-user">${icon} ${escHtml(danmu.user || '')}</span>
-    <span class="danmu-text">${escHtml(danmu.text || '')}</span>
-    <span class="danmu-time">${new Date().toLocaleTimeString()}</span>
-  `;
+  item.innerHTML =
+    `<span class="danmu-user">${icon} ${escHtml(danmu.user||'')}</span>` +
+    `<span class="danmu-text">${escHtml(danmu.text||'')}</span>` +
+    `<span class="danmu-time">${new Date().toLocaleTimeString().slice(0,5)}</span>`;
 
   list.insertBefore(item, list.firstChild);
   danmuCount++;
-  document.getElementById('danmuCount').textContent = danmuCount;
+  document.title = danmuCount > 0 ? `弹幕 ${danmuCount}` : '抖音弹幕';
 
-  while (list.children.length > 200) {
+  while (list.children.length > 150) {
     list.removeChild(list.lastChild);
   }
-}
-
-function escHtml(str) {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 function clearDanmu() {
   const list = document.getElementById('danmuList');
   list.innerHTML = '<div class="empty">等待弹幕...</div>';
   danmuCount = 0;
-  document.getElementById('danmuCount').textContent = '0';
+  document.title = '抖音弹幕';
 }
 
-function setDanmuFontSize(size) {
-  const items = document.querySelectorAll('.danmu-item');
-  items.forEach(item => item.style.fontSize = size + 'px');
+function setFontSize(size) {
+  document.getElementById('fontVal').textContent = size;
+  document.querySelectorAll('.danmu-item').forEach(el => el.style.fontSize = size + 'px');
 }
 
-function setDanmuOpacity(val) {
-  document.getElementById('danmuList').style.opacity = val / 100;
+async function setOpacity(val) {
+  document.getElementById('opacityVal').textContent = val + '%';
+  await window.electronAPI.setOpacity(val / 100);
 }
 
 async function connectRoom() {
   const url = document.getElementById('roomUrl').value.trim();
-  if (!url) {
-    alert('请输入直播间链接或房间号');
-    return;
-  }
+  if (!url) return;
   const btn = document.getElementById('btnConnect');
   btn.disabled = true;
-  btn.textContent = '⏳ 连接中...';
-  setStatus(false, '连接中...');
+  btn.textContent = '...';
+  setStatus(false, null);
 
   const r = await window.electronAPI.connect(url);
   if (r.success) {
-    btn.textContent = '🔌 已连接';
-    btn.onclick = disconnectRoom;
+    btn.textContent = '已连接';
     setStatus(true, null);
   } else {
     btn.disabled = false;
-    btn.textContent = '❌ 连接失败';
+    btn.textContent = '失败重试';
     setStatus(false, r.error || '连接失败');
   }
 }
 
-async function disconnectRoom() {
-  await window.electronAPI.disconnect();
-  const btn = document.getElementById('btnConnect');
-  btn.textContent = '📡 连接';
-  btn.onclick = connectRoom;
-  btn.disabled = false;
-  setStatus(false, null);
-  clearDanmu();
-}
+// IPC 监听
+window.electronAPI.onDanmu(addDanmu);
+window.electronAPI.onStatus(data => setStatus(data.connected, data.error));
 
-// 监听弹幕
-window.electronAPI.onDanmu((danmu) => {
-  addDanmu(danmu);
-});
-
-// 监听连接状态
-window.electronAPI.onStatus((data) => {
-  setStatus(data.connected, data.error);
-  if (!data.connected && data.error === '已断开') {
-    const btn = document.getElementById('btnConnect');
-    btn.textContent = '📡 连接';
-    btn.onclick = connectRoom;
-    btn.disabled = false;
-  }
-});
-
-// 页面加载完成
-document.addEventListener('DOMContentLoaded', () => {
-  const btn = document.getElementById('btnConnect');
-  btn.onclick = connectRoom;
-});
+// 初始化透明度
+setOpacity(80);

@@ -138,9 +138,15 @@ class DouyinCore {
       BrowserName: 'Mozilla',
       BrowserVersion: this.headers['User-Agent'],
       RoomId: roomId,
-      UserUniqueId: userUniqueId,
+      UserUniqueId: userUniqueId || 'browser-0',
     }, {
-      headers: { 'Content-Type': 'application/json;charset=UTF-8' },
+      headers: {
+        'Content-Type': 'application/json;charset=UTF-8',
+        'Accept': '*/*',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Accept-Language': 'zh-CN,zh;q=0.9',
+        'Connection': 'keep-alive',
+      },
       timeout: 15000,
     });
     if (resp.data.Code !== 0) {
