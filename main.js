@@ -2,9 +2,18 @@
 
 const { app, BrowserWindow, ipcMain, screen } = require('electron');
 const path = require('path');
+const fs = require('fs');
 
 let mainWindow = null;
 let douyinCore = null;
+
+const LOG_FILE = path.join(app.getPath('userData'), 'app.log');
+
+function log(...args) {
+  const msg = '[' + new Date().toISOString() + '] ' + args.join(' ');
+  console.log(msg);
+  fs.appendFileSync(LOG_FILE, msg + '\n');
+}
 
 function createWindow() {
   const primaryDisplay = screen.getPrimaryDisplay();
@@ -34,9 +43,13 @@ function createWindow() {
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
+
+  log('窗口已创建');
 }
 
 async function connectDanmu(liveId) {
+  log('connectDanmu 开始, liveId:', liveId);
+
   if (douyinCore) {
     douyinCore.stop();
     douyinCore = null;
@@ -52,6 +65,7 @@ async function connectDanmu(liveId) {
   });
 
   douyinCore.on('connected', () => {
+    log('connected 事件触发');
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('status', { connected: true, error: null, step: null });
     }
@@ -64,18 +78,26 @@ async function connectDanmu(liveId) {
   });
 
   douyinCore.on('error', (err) => {
+    log('douyinCore error:', err.message);
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('status', { connected: false, error: err.message, step: null });
     }
   });
 
   douyinCore.on('status', (data) => {
+    log('douyinCore status:', data.step);
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('status', { connected: false, error: null, step: data.step });
     }
   });
 
-  return await douyinCore.start(liveId);
+  log('调用 douyinCore.start()');
+  const result = await Promise.race([
+    douyinCore.start(liveId),
+    new Promise(resolve => setTimeout(() => resolve({ success: false, error: '连接超时（20秒）' }), 20000)),
+  ]);
+  log('douyinCore.start() 返回:', JSON.stringify(result));
+  return result;
 }
 
 function disconnectDanmu() {
@@ -87,7 +109,15 @@ function disconnectDanmu() {
 
 function setupIpc() {
   ipcMain.handle('connect', async (event, liveId) => {
-    return await connectDanmu(liveId);
+    log('IPC connect 请求:', liveId);
+    try {
+      const r = await connectDanmu(liveId);
+      log('IPC connect 返回:', JSON.stringify(r));
+      return r;
+    } catch(e) {
+      log('IPC connect 异常:', e.message);
+      return { success: false, error: e.message };
+    }
   });
 
   ipcMain.handle('disconnect', () => {
@@ -109,7 +139,6 @@ function setupIpc() {
     return { opacity: 1.0 };
   });
 
-  // 窗口缩放（页面内容缩放比例 0.5 ~ 1.0）
   ipcMain.handle('set-zoom', (event, factor) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.setZoomFactor(Math.max(0.5, Math.min(1.0, factor)));
@@ -132,6 +161,7 @@ function setupIpc() {
 }
 
 app.whenReady().then(() => {
+  log('App ready');
   createWindow();
   setupIpc();
 });

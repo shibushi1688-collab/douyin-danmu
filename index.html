@@ -17,13 +17,15 @@ html, body {
   display: flex;
   align-items: center;
   padding: 4px 8px;
-  background: rgba(0,0,0,0.45);
+  background: rgba(0,0,0,0.5);
   border-radius: 8px 8px 0 0;
   cursor: move;
   -webkit-app-region: drag;
+  position: relative;
+  z-index: 10;
 }
 .titlebar .title { font-size: 12px; color: rgba(255,255,255,0.7); flex: 1; }
-.titlebar .conn-step { font-size: 11px; color: rgba(255,200,100,0.8); margin-left: 8px; flex: 1; }
+.titlebar .conn-step { font-size: 11px; color: rgba(255,200,100,0.9); margin-left: 8px; flex: 1; }
 .titlebar .win-btn {
   -webkit-app-region: no-drag;
   background: none;
@@ -38,18 +40,20 @@ html, body {
 .titlebar .win-btn.close:hover { background: #e81123; border-radius: 4px; }
 
 .controls {
-  background: rgba(0,0,0,0.35);
-  padding: 6px 8px;
+  background: rgba(0,0,0,0.45);
+  padding: 5px 8px;
   display: flex;
   gap: 6px;
   align-items: center;
+  position: relative;
+  z-index: 10;
 }
 .ctrl-input {
   flex: 1;
-  padding: 5px 8px;
+  padding: 4px 8px;
   border-radius: 4px;
   border: 1px solid rgba(255,255,255,0.15);
-  background: rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.1);
   color: #fff;
   font-size: 12px;
   outline: none;
@@ -58,10 +62,10 @@ html, body {
 .ctrl-input::placeholder { color: rgba(255,255,255,0.3); }
 .ctrl-input:focus { border-color: rgba(255,71,87,0.6); }
 .btn {
-  background: rgba(255,71,87,0.8);
+  background: rgba(255,71,87,0.85);
   color: #fff;
   border: none;
-  padding: 5px 12px;
+  padding: 4px 12px;
   border-radius: 4px;
   font-size: 12px;
   cursor: pointer;
@@ -72,15 +76,16 @@ html, body {
 .btn:disabled { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.3); cursor: not-allowed; }
 
 .slider-row {
-  background: rgba(0,0,0,0.35);
+  background: rgba(0,0,0,0.4);
   padding: 4px 8px 5px;
   display: flex;
   align-items: center;
   gap: 5px;
+  position: relative;
+  z-index: 10;
 }
 .slider-label { font-size: 11px; color: rgba(255,255,255,0.4); white-space: nowrap; }
 .slider {
-  flex: 1;
   -webkit-appearance: none;
   height: 3px;
   border-radius: 2px;
@@ -98,44 +103,93 @@ html, body {
   cursor: pointer;
 }
 .slider-val { font-size: 11px; color: rgba(255,255,255,0.5); width: 30px; text-align: right; }
-.slider-row .btn {
-  padding: 3px 8px;
-  font-size: 11px;
-  background: rgba(255,255,255,0.1);
-}
-.slider-row .btn:hover { background: rgba(255,255,255,0.2); }
 
-.danmu-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 4px 6px;
-  background: transparent;
+/* 弹幕滚动区域 */
+.danmu-stage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  pointer-events: none;
 }
-.danmu-list::-webkit-scrollbar { display: none; }
+
+.danmu-track {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+/* 弹幕条目 */
+.dm-msg {
+  position: absolute;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 500;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.9), -1px -1px 3px rgba(0,0,0,0.9), 1px -1px 3px rgba(0,0,0,0.9), -1px 1px 3px rgba(0,0,0,0.9);
+  animation: dm-fly linear forwards;
+  pointer-events: none;
+}
+
+.dm-msg.chat { color: #fff; }
+.dm-msg.member { color: #7ec8ff; }
+.dm-msg.gift { color: #ffd700; }
+.dm-msg.like { color: #ff6b81; }
+.dm-msg.social { color: #7bed9f; }
+.dm-msg.share { color: #ffa502; }
+
+@keyframes dm-fly {
+  0%   { transform: translateX(100vw); opacity: 1; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateX(-110%); opacity: 0; }
+}
+
+/* 底部历史记录 */
+.danmu-history {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-height: 120px;
+  overflow-y: auto;
+  background: rgba(0,0,0,0.55);
+  border-radius: 0 0 8px 8px;
+  padding: 4px 6px;
+  z-index: 5;
+}
+.danmu-history::-webkit-scrollbar { display: none; }
+.danmu-history:empty { display: none; }
 
 .danmu-item {
-  padding: 4px 6px;
+  padding: 3px 6px;
   margin-bottom: 2px;
   border-radius: 4px;
-  font-size: 13px;
-  animation: slideIn 0.15s ease;
-  background: rgba(0,0,0,0.5);
+  font-size: 12px;
+  background: rgba(0,0,0,0.4);
   border-left: 2px solid #ff4757;
   word-break: break-all;
-  line-height: 1.4;
+  animation: slideIn 0.15s ease;
 }
-.danmu-item.member { border-left-color: #70a1ff; }
-.danmu-item.gift { border-left-color: #ffa502; }
+.danmu-item.member { border-left-color: #7ec8ff; }
+.danmu-item.gift { border-left-color: #ffd700; }
 .danmu-item.like { border-left-color: #ff6b81; }
-.danmu-item.social { border-left-color: #2ed573; }
-.danmu-item.share { border-left-color: #7bed9f; }
+.danmu-item.social { border-left-color: #7bed9f; }
+.danmu-item.share { border-left-color: #ffa502; }
 
-.danmu-user { color: #ff4757; font-weight: 600; margin-right: 4px; }
-.danmu-text { color: rgba(255,255,255,0.9); }
+.danmu-user { font-weight: 600; margin-right: 4px; }
+.danmu-user.chat { color: #ff4757; }
+.danmu-user.member { color: #7ec8ff; }
+.danmu-user.gift { color: #ffd700; }
+.danmu-user.like { color: #ff6b81; }
+.danmu-user.social { color: #7bed9f; }
+.danmu-user.share { color: #ffa502; }
+.danmu-text { color: rgba(255,255,255,0.85); }
 .danmu-time { color: rgba(255,255,255,0.3); font-size: 10px; margin-left: 4px; }
-.empty { text-align: center; color: rgba(255,255,255,0.2); padding: 20px 0; font-size: 12px; }
+.empty-tip { text-align: center; color: rgba(255,255,255,0.2); padding: 10px 0; font-size: 11px; }
 
-@keyframes slideIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 </head>
 <body>
@@ -157,21 +211,26 @@ html, body {
 <div class="slider-row">
   <span class="slider-label">透明</span>
   <input type="range" class="slider" id="opacitySlider" min="10" max="100" value="80"
-    oninput="setOpacity(this.value)" />
+    style="flex:1" oninput="setOpacity(this.value)" />
   <span class="slider-val" id="opacityVal">80%</span>
-  <span class="slider-label" style="margin-left:4px">字</span>
-  <input type="range" class="slider" id="fontSlider" min="11" max="24" value="13"
-    style="flex:0.7" oninput="setFontSize(this.value)" />
-  <span class="slider-val" id="fontVal">13</span>
-  <span class="slider-label" style="margin-left:4px">大小</span>
-  <input type="range" class="slider" id="zoomSlider" min="50" max="100" value="100"
-    style="flex:0.7" oninput="setZoom(this.value)" />
-  <span class="slider-val" id="zoomVal">100%</span>
-  <button class="btn" style="margin-left:2px" onclick="clearDanmu()">清空</button>
+  <span class="slider-label" style="margin-left:6px">字</span>
+  <input type="range" class="slider" id="fontSlider" min="11" max="24" value="15"
+    style="width:60px" oninput="setFontSize(this.value)" />
+  <span class="slider-val" id="fontVal">15</span>
+  <span class="slider-label" style="margin-left:6px">速</span>
+  <input type="range" class="slider" id="speedSlider" min="3" max="12" value="7"
+    style="width:50px" oninput="setSpeed(this.value)" />
+  <span class="slider-val" id="speedVal">7</span>
 </div>
 
-<div class="danmu-list" id="danmuList">
-  <div class="empty">等待弹幕...</div>
+<!-- 弹幕舞台：全屏滚动弹幕 -->
+<div class="danmu-stage">
+  <div class="danmu-track" id="danmuTrack"></div>
+</div>
+
+<!-- 底部历史记录 -->
+<div class="danmu-history" id="danmuHistory">
+  <div class="empty-tip">等待弹幕...</div>
 </div>
 
 <script src="renderer.js"></script>
