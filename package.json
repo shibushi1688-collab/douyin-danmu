@@ -1,0 +1,60 @@
+{
+  "name": "douyin-danmu-app",
+  "version": "1.0.0",
+  "description": "抖音弹幕获取工具",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "build": "electron-builder"
+  },
+  "build": {
+    "appId": "com.shibushi.danmu",
+    "productName": "抖音弹幕获取",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "files": [
+      "**/*",
+      "!node_modules/**/*",
+      "!dist/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "node_modules/electron/dist/",
+        "to": "electron/",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ]
+  },
+  "keywords": [
+    "electron",
+    "douyin",
+    "danmu"
+  ],
+  "author": "SHIBUSHI",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "dependencies": {
+    "playwright": "^1.50.0"
+  }
+}

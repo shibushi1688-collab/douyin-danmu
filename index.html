@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>抖音弹幕获取</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Microsoft YaHei', sans-serif; background: #121212; color: #e0e0e0; height: 100vh; display: flex; flex-direction: column; font-size: 14px; }
+.header { background: #1f1f1f; padding: 14px 16px; border-bottom: 1px solid #333; display: flex; align-items: center; gap: 12px; }
+.header h1 { font-size: 16px; font-weight: 600; color: #ff4757; }
+.status-bar { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 12px; }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: #555; flex-shrink: 0; }
+.status-dot.ready { background: #2ed573; }
+.status-dot.error { background: #ff4757; }
+.status-dot.active { background: #ffa502; animation: pulse 1s infinite; }
+.status-label { color: #888; }
+.status-label b { color: #e0e0e0; font-weight: 500; }
+.main { flex: 1; overflow: hidden; display: flex; flex-direction: column; padding: 12px; gap: 10px; }
+.panel { background: #1a1a1a; border-radius: 8px; padding: 12px; }
+.panel-title { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; }
+.row { display: flex; gap: 8px; }
+.btn { background: #ff4757; color: #fff; border: none; padding: 9px 16px; border-radius: 6px; font-size: 13px; cursor: pointer; transition: background 0.2s; flex: 1; }
+.btn:hover { background: #ff6b81; }
+.btn:active { background: #ee5a6f; }
+.btn:disabled { background: #333; color: #666; cursor: not-allowed; }
+.btn-secondary { background: #2f3542; }
+.btn-secondary:hover { background: #3d4452; }
+input { flex: 1; padding: 9px 12px; border-radius: 6px; border: 1px solid #333; background: #0d0d0d; color: #e0e0e0; font-size: 13px; outline: none; }
+input:focus { border-color: #ff4757; }
+input::placeholder { color: #555; }
+.danmu-panel { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+.danmu-list { flex: 1; overflow-y: auto; background: #0d0d0d; border-radius: 8px; padding: 8px; }
+.danmu-item { padding: 7px 10px; margin-bottom: 4px; background: #1a1a1a; border-radius: 4px; font-size: 13px; animation: slideIn 0.2s ease; border-left: 3px solid #ff4757; }
+.danmu-item.gift { border-left-color: #ffa502; }
+.danmu-item.social { border-left-color: #2ed573; }
+.danmu-item.like { border-left-color: #ff6b81; }
+.danmu-user { color: #ff4757; font-weight: 600; margin-right: 6px; }
+.danmu-text { color: #d0d0d0; word-break: break-all; }
+.danmu-time { color: #555; font-size: 11px; margin-left: 6px; }
+.badge { font-size: 11px; padding: 2px 6px; border-radius: 10px; background: #ff4757; color: #fff; }
+.badge-0 { background: #2ed573; }
+.footer { padding: 10px 16px; background: #1a1a1a; border-top: 1px solid #2a2a2a; font-size: 11px; color: #555; text-align: center; }
+.empty { text-align: center; color: #444; padding: 40px 0; font-size: 13px; }
+@keyframes slideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🎙️ 抖音弹幕获取</h1>
+  <div style="flex:1">
+    <div class="status-bar">
+      <div class="status-dot" id="browserDot"></div>
+      <span class="status-label">浏览器 <b id="browserLabel">未启动</b></span>
+      <div class="status-dot" id="loginDot"></div>
+      <span class="status-label">登录 <b id="loginLabel">未登录</b></span>
+      <div class="status-dot" id="roomDot"></div>
+      <span class="status-label">直播 <b id="roomLabel">未入室</b></span>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="panel">
+    <div class="panel-title">步骤 1：启动浏览器</div>
+    <button class="btn" id="btnInit" onclick="initBrowser()">🚀 启动浏览器</button>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">步骤 2：扫码登录</div>
+    <div class="row">
+      <button class="btn btn-secondary" id="btnLogin" onclick="openLogin()" disabled>📱 打开登录页</button>
+      <button class="btn btn-secondary" id="btnCheck" onclick="checkLogin()" disabled>🔄 检查登录</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">步骤 3：进入直播间</div>
+    <div class="row">
+      <input type="text" id="roomUrl" placeholder="粘贴直播间链接，如 https://live.douyin.com/xxxx" />
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button class="btn btn-secondary" id="btnJoin" onclick="joinRoom()" disabled>🎯 进入直播间</button>
+      <button class="btn btn-secondary" id="btnTest" onclick="sendTest()" style="flex:0;padding:9px 12px">🧪 测试</button>
+    </div>
+  </div>
+
+  <div class="panel danmu-panel">
+    <div class="panel-title">
+      <span>📨 弹幕 <span class="badge" id="danmuCount">0</span></span>
+      <span onclick="clearDanmu()" style="cursor:pointer;color:#666;font-size:11px;text-transform:none">🗑️ 清空</span>
+    </div>
+    <div class="danmu-list" id="danmuList">
+      <div class="empty">等待弹幕...</div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">双击运行 · 弹幕数据仅本地使用</div>
+
+<script src="renderer.js"></script>
+</body>
+</html>
