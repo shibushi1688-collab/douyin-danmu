@@ -103,6 +103,7 @@ function addHistoryDanmu(danmu) {
 }
 
 function addDanmu(danmu) {
+  console.log('[Renderer] 收到弹幕:', JSON.stringify(danmu));
   addScrollingDanmu(danmu);
   addHistoryDanmu(danmu);
 }
@@ -150,7 +151,10 @@ async function connectRoom() {
   }
 }
 
-window.electronAPI.onDanmu(addDanmu);
+window.electronAPI.onDanmu((data) => {
+  console.log('[Renderer] onDanmu 收到数据:', JSON.stringify(data));
+  addDanmu(data);
+});
 window.electronAPI.onStatus(data => {
   if (data.step) {
     setStatus(false, null, data.step);

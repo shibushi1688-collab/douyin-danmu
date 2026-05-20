@@ -7,7 +7,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   disconnect: () => ipcRenderer.invoke('disconnect'),
 
   onDanmu: (callback) => {
-    ipcRenderer.on('danmu', (event, data) => callback(data));
+    ipcRenderer.on('danmu', (event, data) => {
+      console.log('[Preload] danmu received:', JSON.stringify(data));
+      callback(data);
+    });
   },
   onStatus: (callback) => {
     ipcRenderer.on('status', (event, data) => callback(data));

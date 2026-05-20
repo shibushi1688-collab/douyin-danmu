@@ -10,7 +10,6 @@
   },
   "build": {
     "appId": "com.shibushi.danmu",
-    "productName": "抖音弹幕获取",
     "directories": {
       "output": "dist"
     },
@@ -18,7 +17,9 @@
       "target": [
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },
@@ -30,12 +31,16 @@
     "asar": true,
     "compression": "store"
   },
-  "keywords": ["electron", "douyin", "danmu"],
+  "keywords": [
+    "electron",
+    "douyin",
+    "danmu"
+  ],
   "author": "SHIBUSHI",
   "license": "MIT",
   "devDependencies": {
     "electron": "^33.0.0",
-    "electron-builder": "^25.1.8"
+    "electron-builder": "^24.13.3"
   },
   "dependencies": {
     "axios": "^1.16.1",
