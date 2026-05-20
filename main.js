@@ -3,17 +3,17 @@
 const { app, BrowserWindow, ipcMain, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { BarrageClient } = require('./barrage-client');
+const { DouyinCore } = require('./douyin-core');
 
 let mainWindow = null;
-let barrageClient = null;
+let douyinCore = null;
 
 const LOG_FILE = path.join(app.getPath('userData'), 'app.log');
 
 function log(...args) {
   const msg = '[' + new Date().toISOString() + '] ' + args.join(' ');
   console.log(msg);
-  try { fs.appendFileSync(LOG_FILE, msg + '\n'); } catch (e) { /* ignore */ }
+  try { fs.appendFileSync(LOG_FILE, msg + '\n'); } catch (e) {}
 }
 
 function createWindow() {
@@ -48,59 +48,75 @@ function createWindow() {
   log('窗口已创建');
 }
 
-function connectDanmu() {
-  log('connectDanmu 开始');
+function connectDanmu(liveUrl) {
+  log('connectDanmu 开始, liveId:', liveUrl);
 
-  if (barrageClient) {
-    barrageClient.disconnect();
-    barrageClient = null;
+  if (douyinCore) {
+    douyinCore.disconnect();
+    douyinCore = null;
   }
 
-  barrageClient = new BarrageClient();
+  douyinCore = new DouyinCore();
+  douyinCore.setLog(log);
 
-  barrageClient.on('danmu', (msg) => {
+  douyinCore.on('danmu', (msg) => {
+    log('弹幕:', JSON.stringify(msg));
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('danmu', msg);
     }
   });
 
-  barrageClient.on('connected', () => {
-    log('已连接到 BarrageGrab');
+  douyinCore.on('connected', () => {
+    log('已连接抖音直播间');
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('status', { connected: true, error: null, step: null });
     }
   });
 
-  barrageClient.on('disconnected', () => {
-    log('与 BarrageGrab 断开');
+  douyinCore.on('disconnected', () => {
+    log('与抖音直播间断开');
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('status', { connected: false, error: '连接断开，3秒后自动重连...', step: null });
+      mainWindow.webContents.send('status', { connected: false, error: '连接断开', step: null });
     }
   });
 
-  barrageClient.on('error', (err) => {
-    log('BarrageClient error:', err.message);
+  douyinCore.on('error', (err) => {
+    log('DouyinCore error:', err.message);
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('status', { connected: false, error: '无法连接 BarrageGrab（127.0.0.1:8888），请确认 BarrageGrab.exe 已启动', step: null });
+      mainWindow.webContents.send('status', { connected: false, error: err.message, step: null });
     }
   });
 
-  barrageClient.connect();
+  douyinCore.on('status', (s) => {
+    log('状态:', s);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('status', { connected: false, error: null, step: s });
+    }
+  });
+
+  // 异步启动（不阻塞）
+  douyinCore.start(liveUrl).catch(err => {
+    log('connectDanmu 异常:', err.message);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('status', { connected: false, error: err.message, step: null });
+    }
+  });
+
   return { success: true };
 }
 
 function disconnectDanmu() {
-  if (barrageClient) {
-    barrageClient.disconnect();
-    barrageClient = null;
+  if (douyinCore) {
+    douyinCore.disconnect();
+    douyinCore = null;
   }
 }
 
 function setupIpc() {
-  ipcMain.handle('connect', async () => {
-    log('IPC connect 请求');
+  ipcMain.handle('connect', async (event, liveUrl) => {
+    log('IPC connect 请求:', liveUrl);
     try {
-      return connectDanmu();
+      return connectDanmu(liveUrl);
     } catch (e) {
       log('IPC connect 异常:', e.message);
       return { success: false, error: e.message };
@@ -158,5 +174,5 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
-  if (barrageClient) barrageClient.disconnect();
+  if (douyinCore) douyinCore.disconnect();
 });

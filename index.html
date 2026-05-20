@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>抖音弹幕</title>
+<title>纤型公屏</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body {
@@ -99,6 +99,26 @@ html, body {
 }
 .slider-val { font-size: 11px; color: rgba(255,255,255,0.5); width: 30px; text-align: right; }
 
+/* 顶部通知栏 */
+.event-bar {
+  background: rgba(0,0,0,var(--bg-alpha));
+  padding: 4px 8px;
+  color: rgba(255,255,255,0.5);
+  min-height: 20px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.event-bar .event-item {
+  animation: fadeIn 0.2s ease;
+}
+.event-bar .event-item.member { color: #7ec8ff; }
+.event-bar .event-item.gift { color: #ffd700; }
+.event-bar .event-item.like { color: #ff6b81; }
+.event-bar .event-item.social { color: #7bed9f; }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
 .danmu-list {
   flex: 1;
   overflow-y: auto;
@@ -119,19 +139,8 @@ html, body {
   word-break: break-all;
   animation: slideIn 0.15s ease;
 }
-.danmu-item.member { border-left-color: #7ec8ff; }
-.danmu-item.gift { border-left-color: #ffd700; }
-.danmu-item.like { border-left-color: #ff6b81; }
-.danmu-item.social { border-left-color: #7bed9f; }
-.danmu-item.share { border-left-color: #ffa502; }
 
 .danmu-user { font-weight: 600; margin-right: 4px; }
-.danmu-user.chat { color: #ff4757; }
-.danmu-user.member { color: #7ec8ff; }
-.danmu-user.gift { color: #ffd700; }
-.danmu-user.like { color: #ff6b81; }
-.danmu-user.social { color: #7bed9f; }
-.danmu-user.share { color: #ffa502; }
 .danmu-text { color: rgba(255,255,255,0.9); }
 .empty-tip { text-align: center; color: rgba(255,255,255,0.2); padding: 20px 0; font-size: 12px; }
 
@@ -141,7 +150,7 @@ html, body {
 <body style="display:flex;flex-direction:column;height:100vh;--bg-alpha:0.5">
 
 <div class="titlebar">
-  <span class="title">抖音弹幕</span>
+  <span class="title">纤型公屏</span>
   <span class="conn-step" id="connStep"></span>
   <div style="display:flex;gap:2px;-webkit-app-region:no-drag">
     <span id="statusDot" style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.3);align-self:center;margin-right:4px"></span>
@@ -164,6 +173,8 @@ html, body {
     style="width:80px" oninput="setFontSize(this.value)" />
   <span class="slider-val" id="fontVal">13</span>
 </div>
+
+<div class="event-bar" id="eventBar"></div>
 
 <div class="danmu-list" id="danmuList">
   <div class="empty-tip">等待弹幕...</div>
