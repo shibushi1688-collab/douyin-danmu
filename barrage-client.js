@@ -59,8 +59,8 @@ class BarrageClient {
     });
 
     this.ws.on('close', () => {
-      this._emit('disconnected');
       if (!this._intentionalClose) {
+        this._emit('disconnected');
         this._scheduleReconnect();
       }
     });

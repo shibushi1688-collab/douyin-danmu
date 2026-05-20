@@ -17,12 +17,10 @@ html, body {
   display: flex;
   align-items: center;
   padding: 4px 8px;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0,0,0,var(--bg-alpha));
   border-radius: 8px 8px 0 0;
   cursor: move;
   -webkit-app-region: drag;
-  position: relative;
-  z-index: 10;
 }
 .titlebar .title { font-size: 12px; color: rgba(255,255,255,0.7); flex: 1; }
 .titlebar .conn-step { font-size: 11px; color: rgba(255,200,100,0.9); margin-left: 8px; flex: 1; }
@@ -40,13 +38,11 @@ html, body {
 .titlebar .win-btn.close:hover { background: #e81123; border-radius: 4px; }
 
 .controls {
-  background: rgba(0,0,0,0.45);
+  background: rgba(0,0,0,var(--bg-alpha));
   padding: 5px 8px;
   display: flex;
   gap: 6px;
   align-items: center;
-  position: relative;
-  z-index: 10;
 }
 .ctrl-input {
   flex: 1;
@@ -74,15 +70,15 @@ html, body {
 }
 .btn:hover { background: rgba(255,71,87,1); }
 .btn:disabled { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.3); cursor: not-allowed; }
+.btn.disconnect { background: rgba(255,255,255,0.15); }
+.btn.disconnect:hover { background: rgba(255,255,255,0.25); }
 
 .slider-row {
-  background: rgba(0,0,0,0.4);
+  background: rgba(0,0,0,var(--bg-alpha));
   padding: 4px 8px 5px;
   display: flex;
   align-items: center;
   gap: 5px;
-  position: relative;
-  z-index: 10;
 }
 .slider-label { font-size: 11px; color: rgba(255,255,255,0.4); white-space: nowrap; }
 .slider {
@@ -96,78 +92,29 @@ html, body {
 }
 .slider::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 12px;
-  height: 12px;
+  width: 12px; height: 12px;
   border-radius: 50%;
   background: #ff4757;
   cursor: pointer;
 }
 .slider-val { font-size: 11px; color: rgba(255,255,255,0.5); width: 30px; text-align: right; }
 
-/* 弹幕滚动区域 */
-.danmu-stage {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-.danmu-track {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-}
-
-/* 弹幕条目 */
-.dm-msg {
-  position: absolute;
-  white-space: nowrap;
-  font-size: 15px;
-  font-weight: 500;
-  text-shadow: 1px 1px 3px rgba(0,0,0,0.9), -1px -1px 3px rgba(0,0,0,0.9), 1px -1px 3px rgba(0,0,0,0.9), -1px 1px 3px rgba(0,0,0,0.9);
-  animation: dm-fly linear forwards;
-  pointer-events: none;
-}
-
-.dm-msg.chat { color: #fff; }
-.dm-msg.member { color: #7ec8ff; }
-.dm-msg.gift { color: #ffd700; }
-.dm-msg.like { color: #ff6b81; }
-.dm-msg.social { color: #7bed9f; }
-.dm-msg.share { color: #ffa502; }
-
-@keyframes dm-fly {
-  0%   { transform: translateX(100vw); opacity: 1; }
-  10%  { opacity: 1; }
-  90%  { opacity: 1; }
-  100% { transform: translateX(-110%); opacity: 0; }
-}
-
-/* 底部历史记录 */
-.danmu-history {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  max-height: 120px;
+.danmu-list {
+  flex: 1;
   overflow-y: auto;
-  background: rgba(0,0,0,0.55);
+  background: rgba(0,0,0,var(--bg-alpha));
   border-radius: 0 0 8px 8px;
-  padding: 4px 6px;
-  z-index: 5;
+  padding: 6px 8px;
 }
-.danmu-history::-webkit-scrollbar { display: none; }
-.danmu-history:empty { display: none; }
+.danmu-list::-webkit-scrollbar { width: 3px; }
+.danmu-list::-webkit-scrollbar-track { background: transparent; }
+.danmu-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
 
 .danmu-item {
-  padding: 3px 6px;
-  margin-bottom: 2px;
+  padding: 4px 6px;
+  margin-bottom: 3px;
   border-radius: 4px;
-  font-size: 12px;
-  background: rgba(0,0,0,0.4);
+  background: rgba(0,0,0,var(--bg-alpha));
   border-left: 2px solid #ff4757;
   word-break: break-all;
   animation: slideIn 0.15s ease;
@@ -185,51 +132,40 @@ html, body {
 .danmu-user.like { color: #ff6b81; }
 .danmu-user.social { color: #7bed9f; }
 .danmu-user.share { color: #ffa502; }
-.danmu-text { color: rgba(255,255,255,0.85); }
-.danmu-time { color: rgba(255,255,255,0.3); font-size: 10px; margin-left: 4px; }
-.empty-tip { text-align: center; color: rgba(255,255,255,0.2); padding: 10px 0; font-size: 11px; }
+.danmu-text { color: rgba(255,255,255,0.9); }
+.empty-tip { text-align: center; color: rgba(255,255,255,0.2); padding: 20px 0; font-size: 12px; }
 
 @keyframes slideIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 </head>
-<body>
+<body style="display:flex;flex-direction:column;height:100vh;--bg-alpha:0.5">
 
 <div class="titlebar">
   <span class="title">抖音弹幕</span>
   <span class="conn-step" id="connStep"></span>
   <div style="display:flex;gap:2px;-webkit-app-region:no-drag">
-    <span class="status-dot" id="statusDot" style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.3);align-self:center;margin-right:4px"></span>
+    <span id="statusDot" style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.3);align-self:center;margin-right:4px"></span>
     <button class="win-btn close" onclick="window.electronAPI.closeWindow()">✕</button>
   </div>
 </div>
 
 <div class="controls">
   <input type="text" class="ctrl-input" id="roomUrl" placeholder="粘贴直播间链接或房间号" />
-  <button class="btn" id="btnConnect" onclick="connectRoom()">连接</button>
+  <button class="btn" id="btnConnect" onclick="toggleConnect()">连接</button>
 </div>
 
 <div class="slider-row">
-  <span class="slider-label">透明</span>
-  <input type="range" class="slider" id="opacitySlider" min="10" max="100" value="80"
-    style="flex:1" oninput="setOpacity(this.value)" />
-  <span class="slider-val" id="opacityVal">80%</span>
+  <span class="slider-label">背景</span>
+  <input type="range" class="slider" id="bgSlider" min="5" max="80" value="50"
+    style="width:80px" oninput="setBgAlpha(this.value)" />
+  <span class="slider-val" id="bgVal">50%</span>
   <span class="slider-label" style="margin-left:6px">字</span>
-  <input type="range" class="slider" id="fontSlider" min="11" max="24" value="15"
-    style="width:60px" oninput="setFontSize(this.value)" />
-  <span class="slider-val" id="fontVal">15</span>
-  <span class="slider-label" style="margin-left:6px">速</span>
-  <input type="range" class="slider" id="speedSlider" min="3" max="12" value="7"
-    style="width:50px" oninput="setSpeed(this.value)" />
-  <span class="slider-val" id="speedVal">7</span>
+  <input type="range" class="slider" id="fontSlider" min="10" max="60" value="13"
+    style="width:80px" oninput="setFontSize(this.value)" />
+  <span class="slider-val" id="fontVal">13</span>
 </div>
 
-<!-- 弹幕舞台：全屏滚动弹幕 -->
-<div class="danmu-stage">
-  <div class="danmu-track" id="danmuTrack"></div>
-</div>
-
-<!-- 底部历史记录 -->
-<div class="danmu-history" id="danmuHistory">
+<div class="danmu-list" id="danmuList">
   <div class="empty-tip">等待弹幕...</div>
 </div>
 
